@@ -4,7 +4,7 @@
 	 */
 
 	import type { Site } from '$lib/types';
-	import { selectedSite, selectSite } from '$lib/stores/sites';
+	import { sitesStore } from '$lib/stores/sites.svelte';
 
 	const statusConfig = {
 		known: {
@@ -25,7 +25,7 @@
 	};
 
 	function handleClose() {
-		selectSite(null);
+		sitesStore.selectSite(null);
 	}
 
 	function formatCoordinates(lat: number, lng: number): string {
@@ -35,8 +35,8 @@
 	}
 </script>
 
-{#if $selectedSite}
-	{@const site = $selectedSite}
+{#if sitesStore.selectedSite}
+	{@const site = sitesStore.selectedSite}
 	{@const config = statusConfig[site.status]}
 
 	<div class="site-panel">
@@ -45,7 +45,7 @@
 				<span class="status-badge {config.color}"></span>
 				<span class="status-label {config.textColor}">{config.label}</span>
 			</div>
-			<button class="close-btn" on:click={handleClose} aria-label="Close panel">
+			<button class="close-btn" onclick={handleClose} aria-label="Close panel">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					class="h-5 w-5"

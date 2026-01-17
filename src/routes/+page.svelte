@@ -3,12 +3,12 @@
 	import Map from '$lib/components/Map.svelte';
 	import SitePanel from '$lib/components/SitePanel.svelte';
 	import RegionSelector from '$lib/components/RegionSelector.svelte';
-	import { layerVisibility, toggleLayer, siteCounts } from '$lib/stores/sites';
+	import { sitesStore } from '$lib/stores/sites.svelte';
 	import type { BoundingBox } from '$lib/types';
 
 	let mapComponent: Map;
-	let isDrawing = false;
-	let showControls = true;
+	let isDrawing = $state(false);
+	let showControls = $state(true);
 
 	const layerConfig = [
 		{ key: 'knownSites' as const, label: 'Known Sites', color: 'bg-site-known' },
@@ -27,8 +27,15 @@
 		// Future: trigger scan for this region
 	}
 
-	function handleToggleLayer(layerKey: keyof typeof $layerVisibility) {
-		toggleLayer(layerKey);
+	function handleToggleLayer(layerKey: 'knownSites' | 'potentialSites' | 'unverifiedSites') {
+		sitesStore.toggleLayer(layerKey);
+	}
+
+	function getLayerCount(key: string): number {
+		const counts = sitesStore.siteCounts;
+		if (key === 'knownSites') return counts.known;
+		if (key === 'potentialSites') return counts.potential;
+		return counts.unverified;
 	}
 </script>
 
@@ -63,7 +70,7 @@
 			<p class="subtitle">Archaeological Site Detection</p>
 		</div>
 
-		<button class="toggle-controls-btn" on:click={() => (showControls = !showControls)}>
+		<button class="toggle-controls-btn" onclick={() => (showControls = !showControls)}>
 			{showControls ? 'Hide Controls' : 'Show Controls'}
 		</button>
 	</header>
@@ -79,17 +86,13 @@
 						<label class="layer-toggle">
 							<input
 								type="checkbox"
-								checked={$layerVisibility[layer.key]}
-								on:change={() => handleToggleLayer(layer.key)}
+								checked={sitesStore.layerVisibility[layer.key]}
+								onchange={() => handleToggleLayer(layer.key)}
 							/>
 							<span class="toggle-indicator {layer.color}"></span>
 							<span class="toggle-label">{layer.label}</span>
 							<span class="toggle-count">
-								{layer.key === 'knownSites'
-									? $siteCounts.known
-									: layer.key === 'potentialSites'
-										? $siteCounts.potential
-										: $siteCounts.unverified}
+								{getLayerCount(layer.key)}
 							</span>
 						</label>
 					{/each}
@@ -104,11 +107,11 @@
 			<!-- Stats -->
 			<section class="panel-section stats-section">
 				<div class="stat">
-					<span class="stat-value">{$siteCounts.total}</span>
+					<span class="stat-value">{sitesStore.siteCounts.total}</span>
 					<span class="stat-label">Total Sites</span>
 				</div>
 				<div class="stat">
-					<span class="stat-value">{$siteCounts.known}</span>
+					<span class="stat-value">{sitesStore.siteCounts.known}</span>
 					<span class="stat-label">Verified</span>
 				</div>
 			</section>

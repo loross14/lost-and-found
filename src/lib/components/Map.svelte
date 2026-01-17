@@ -3,18 +3,21 @@
 	import type { Map as LeafletMap } from 'leaflet';
 	import { DEFAULT_MAP_CONFIG } from '$lib/types';
 	import type { Site, BoundingBox } from '$lib/types';
-	import { visibleSites, selectedSite, selectSite, addScanRegion } from '$lib/stores/sites';
+	import { sitesStore } from '$lib/stores/sites.svelte';
 
 	/** Exported props */
-	export let onRegionSelect: ((bounds: BoundingBox) => void) | undefined = undefined;
+	interface Props {
+		onRegionSelect?: (bounds: BoundingBox) => void;
+	}
+	let { onRegionSelect }: Props = $props();
 
 	let mapContainer: HTMLDivElement;
-	let map: LeafletMap | null = null;
-	let L: typeof import('leaflet') | null = null;
-	let markers: Map<string, L.Marker> = new Map();
-	let drawingRectangle = false;
-	let rectangleStart: L.LatLng | null = null;
-	let currentRectangle: L.Rectangle | null = null;
+	let map: LeafletMap | null = $state(null);
+	let L: typeof import('leaflet') | null = $state(null);
+	let markers: Map<string, any> = new Map();
+	let drawingRectangle = $state(false);
+	let rectangleStart: any | null = $state(null);
+	let currentRectangle: any | null = $state(null);
 
 	/** Marker colors by site status */
 	const markerColors = {
@@ -24,8 +27,8 @@
 	};
 
 	/** Create a custom icon for a site */
-	function createMarkerIcon(status: Site['status']): L.DivIcon {
-		if (!L) return null as unknown as L.DivIcon;
+	function createMarkerIcon(status: Site['status']) {
+		if (!L) return null;
 
 		const color = markerColors[status];
 		return L.divIcon({
@@ -71,7 +74,7 @@
 				});
 
 				marker.on('click', () => {
-					selectSite(site.id);
+					sitesStore.selectSite(site.id);
 				});
 
 				marker.addTo(map!);
@@ -126,12 +129,12 @@
 		}).addTo(map);
 
 		// Handle rectangle drawing
-		map.on('mousedown', (e: L.LeafletMouseEvent) => {
+		map.on('mousedown', (e: any) => {
 			if (!drawingRectangle || !L || !map) return;
 			rectangleStart = e.latlng;
 		});
 
-		map.on('mousemove', (e: L.LeafletMouseEvent) => {
+		map.on('mousemove', (e: any) => {
 			if (!drawingRectangle || !rectangleStart || !L || !map) return;
 
 			if (currentRectangle) {
@@ -145,7 +148,7 @@
 			}).addTo(map);
 		});
 
-		map.on('mouseup', (e: L.LeafletMouseEvent) => {
+		map.on('mouseup', (e: any) => {
 			if (!drawingRectangle || !rectangleStart || !L || !map) return;
 
 			const bounds: BoundingBox = {
@@ -157,7 +160,7 @@
 
 			// Only trigger if rectangle has some size
 			if (bounds.north !== bounds.south && bounds.east !== bounds.west) {
-				addScanRegion(bounds);
+				sitesStore.addScanRegion(bounds);
 				if (onRegionSelect) {
 					onRegionSelect(bounds);
 				}
@@ -166,14 +169,8 @@
 			disableDrawMode();
 		});
 
-		// Subscribe to visible sites
-		const unsubscribe = visibleSites.subscribe((sites) => {
-			updateMarkers(sites);
-		});
-
-		return () => {
-			unsubscribe();
-		};
+		// Initial marker update
+		updateMarkers(sitesStore.visibleSites);
 	});
 
 	onDestroy(() => {
@@ -183,10 +180,19 @@
 		}
 	});
 
-	// React to selected site changes
-	$: if ($selectedSite && map) {
-		flyToSite($selectedSite);
-	}
+	// React to visible sites and selected site changes
+	$effect(() => {
+		if (map && L) {
+			updateMarkers(sitesStore.visibleSites);
+		}
+	});
+
+	$effect(() => {
+		const selected = sitesStore.selectedSite;
+		if (selected && map) {
+			flyToSite(selected);
+		}
+	});
 </script>
 
 <svelte:head>
