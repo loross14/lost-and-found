@@ -11,6 +11,7 @@ export * from './types';
 export {
 	sites,
 	selectedSite,
+	selectedSiteId,
 	layerVisibility,
 	scanRegions,
 	visibleSites,
@@ -22,8 +23,7 @@ export {
 	addSite
 } from './stores/sites';
 
-// Re-export components (for potential external use)
+// Re-export components
 export { default as Map } from './components/Map.svelte';
-export { default as SiteMarker } from './components/SiteMarker.svelte';
 export { default as SitePanel } from './components/SitePanel.svelte';
 export { default as RegionSelector } from './components/RegionSelector.svelte';

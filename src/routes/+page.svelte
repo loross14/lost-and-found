@@ -6,9 +6,9 @@
 	import { toggleLayer, layerVisibility, siteCounts } from '$lib/stores/sites';
 	import type { BoundingBox } from '$lib/types';
 
-	let mapComponent: Map;
-	let isDrawing = false;
-	let showControls = true;
+	let mapComponent: Map | undefined = $state();
+	let isDrawing = $state(false);
+	let showControls = $state(true);
 
 	const layerConfig = [
 		{ key: 'knownSites' as const, label: 'Known Sites', color: 'bg-site-known' },
@@ -24,17 +24,20 @@
 	function handleRegionSelect(bounds: BoundingBox) {
 		isDrawing = false;
 		console.log('Region selected:', bounds);
-		// Future: trigger scan for this region
 	}
 
 	function handleToggleLayer(layerKey: 'knownSites' | 'potentialSites' | 'unverifiedSites') {
 		toggleLayer(layerKey);
 	}
 
-	function getLayerCount(key: string): number {
-		if (key === 'knownSites') return $siteCounts.known;
-		if (key === 'potentialSites') return $siteCounts.potential;
-		return $siteCounts.unverified;
+	function handleToggleControls() {
+		showControls = !showControls;
+	}
+
+	function getLayerCount(key: string, counts: typeof $siteCounts): number {
+		if (key === 'knownSites') return counts.known;
+		if (key === 'potentialSites') return counts.potential;
+		return counts.unverified;
 	}
 </script>
 
@@ -43,12 +46,10 @@
 </svelte:head>
 
 <main class="app-container">
-	<!-- Map (full screen) -->
 	{#if browser}
 		<Map bind:this={mapComponent} onRegionSelect={handleRegionSelect} />
 	{/if}
 
-	<!-- Header overlay -->
 	<header class="header-overlay">
 		<div class="header-content">
 			<div class="logo">
@@ -68,15 +69,13 @@
 			</div>
 			<p class="subtitle">Archaeological Site Detection</p>
 		</div>
-		<button class="toggle-controls-btn" on:click={() => (showControls = !showControls)}>
+		<button class="toggle-controls-btn" onclick={handleToggleControls}>
 			{showControls ? 'Hide Controls' : 'Show Controls'}
 		</button>
 	</header>
 
-	<!-- Control panel (left side) -->
 	{#if showControls}
 		<aside class="control-panel animate-slide-right">
-			<!-- Layer toggles -->
 			<section class="panel-section">
 				<h2 class="section-title">Layers</h2>
 				<div class="layer-toggles">
@@ -85,24 +84,22 @@
 							<input
 								type="checkbox"
 								checked={$layerVisibility[layer.key]}
-								on:change={() => handleToggleLayer(layer.key)}
+								onchange={() => handleToggleLayer(layer.key)}
 							/>
 							<span class="toggle-indicator {layer.color}"></span>
 							<span class="toggle-label">{layer.label}</span>
 							<span class="toggle-count">
-								{getLayerCount(layer.key)}
+								{getLayerCount(layer.key, $siteCounts)}
 							</span>
 						</label>
 					{/each}
 				</div>
 			</section>
 
-			<!-- Region selector -->
 			<section class="panel-section">
 				<RegionSelector onDrawStart={handleDrawStart} {isDrawing} />
 			</section>
 
-			<!-- Stats -->
 			<section class="panel-section stats-section">
 				<div class="stat">
 					<span class="stat-value">{$siteCounts.total}</span>
@@ -116,7 +113,6 @@
 		</aside>
 	{/if}
 
-	<!-- Site detail panel (right side) -->
 	<SitePanel />
 </main>
 
@@ -128,7 +124,6 @@
 		overflow: hidden;
 	}
 
-	/* Header overlay */
 	.header-overlay {
 		position: absolute;
 		top: 0;
@@ -181,7 +176,6 @@
 		background: #f9fafb;
 	}
 
-	/* Control panel */
 	.control-panel {
 		position: absolute;
 		top: 80px;
@@ -213,7 +207,6 @@
 		margin-bottom: 12px;
 	}
 
-	/* Layer toggles */
 	.layer-toggles {
 		display: flex;
 		flex-direction: column;
@@ -263,7 +256,6 @@
 		font-weight: 500;
 	}
 
-	/* Stats section */
 	.stats-section {
 		display: flex;
 		gap: 16px;

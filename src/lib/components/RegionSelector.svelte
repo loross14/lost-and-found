@@ -1,12 +1,13 @@
 <script lang="ts">
-	/**
-	 * RegionSelector component - allows users to draw rectangles to select scan regions
-	 */
 	import { removeScanRegion, scanRegions } from '$lib/stores/sites';
 	import type { ScanRegion } from '$lib/types';
 
-	export let onDrawStart: () => void = () => {};
-	export let isDrawing: boolean = false;
+	interface Props {
+		onDrawStart?: () => void;
+		isDrawing?: boolean;
+	}
+
+	let { onDrawStart = () => {}, isDrawing = false }: Props = $props();
 
 	function handleStartDraw() {
 		onDrawStart();
@@ -58,7 +59,7 @@
 		<button
 			class="draw-btn"
 			class:drawing={isDrawing}
-			on:click={handleStartDraw}
+			onclick={handleStartDraw}
 			disabled={isDrawing}
 		>
 			{#if isDrawing}
@@ -125,7 +126,7 @@
 					</div>
 					<button
 						class="remove-btn"
-						on:click={() => handleRemoveRegion(region.id)}
+						onclick={() => handleRemoveRegion(region.id)}
 						aria-label="Remove region"
 					>
 						<svg

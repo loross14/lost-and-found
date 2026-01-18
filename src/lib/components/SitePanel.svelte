@@ -1,8 +1,4 @@
 <script lang="ts">
-	/**
-	 * SitePanel component - displays detailed information about a selected site
-	 */
-	import type { Site } from '$lib/types';
 	import { selectedSite, selectSite } from '$lib/stores/sites';
 
 	const statusConfig = {
@@ -119,7 +115,6 @@
 			</a>
 		{/if}
 
-		<!-- Placeholder for future actions -->
 		<div class="panel-actions">
 			<button class="action-btn action-btn-secondary" disabled title="Coming soon">
 				Add Note

@@ -5,25 +5,26 @@
 	import type { Site, BoundingBox } from '$lib/types';
 	import { visibleSites, selectedSite, selectSite, addScanRegion } from '$lib/stores/sites';
 
-	/** Exported props */
-	export let onRegionSelect: (bounds: BoundingBox) => void = () => {};
+	interface Props {
+		onRegionSelect?: (bounds: BoundingBox) => void;
+	}
+
+	let { onRegionSelect = () => {} }: Props = $props();
 
 	let mapContainer: HTMLDivElement;
-	let map: LeafletMap | null = null;
-	let L: typeof import('leaflet') | null = null;
+	let map: LeafletMap | null = $state(null);
+	let L: typeof import('leaflet') | null = $state(null);
 	let markers: Map<string, any> = new Map();
-	let drawingRectangle = false;
-	let rectangleStart: any | null = null;
-	let currentRectangle: any | null = null;
+	let drawingRectangle = $state(false);
+	let rectangleStart: any | null = $state(null);
+	let currentRectangle: any | null = $state(null);
 
-	/** Marker colors by site status */
 	const markerColors = {
 		known: '#22c55e',
 		potential: '#f59e0b',
 		unverified: '#6b7280'
 	};
 
-	/** Create a custom icon for a site */
 	function createMarkerIcon(status: Site['status']) {
 		if (!L) return null;
 		const color = markerColors[status];
@@ -45,7 +46,6 @@
 		});
 	}
 
-	/** Update markers based on visible sites */
 	function updateMarkers(sites: Site[]): void {
 		if (!map || !L) return;
 
@@ -60,11 +60,9 @@
 		// Add or update markers for visible sites
 		sites.forEach((site) => {
 			if (markers.has(site.id)) {
-				// Update existing marker position if needed
 				const marker = markers.get(site.id)!;
 				marker.setLatLng([site.coordinates.lat, site.coordinates.lng]);
 			} else {
-				// Create new marker
 				const marker = L!.marker([site.coordinates.lat, site.coordinates.lng], {
 					icon: createMarkerIcon(site.status)
 				});
@@ -77,14 +75,12 @@
 		});
 	}
 
-	/** Enable rectangle drawing mode */
 	export function enableDrawMode(): void {
 		if (!map) return;
 		drawingRectangle = true;
 		map.getContainer().style.cursor = 'crosshair';
 	}
 
-	/** Disable rectangle drawing mode */
 	export function disableDrawMode(): void {
 		if (!map) return;
 		drawingRectangle = false;
@@ -96,7 +92,6 @@
 		}
 	}
 
-	/** Fly to a specific site */
 	export function flyToSite(site: Site): void {
 		if (!map) return;
 		map.flyTo([site.coordinates.lat, site.coordinates.lng], 12, {
@@ -105,16 +100,13 @@
 	}
 
 	onMount(async () => {
-		// Dynamically import Leaflet (client-side only)
 		L = await import('leaflet');
 
-		// Initialize map
 		map = L.map(mapContainer).setView(
 			[DEFAULT_MAP_CONFIG.center.lat, DEFAULT_MAP_CONFIG.center.lng],
 			DEFAULT_MAP_CONFIG.zoom
 		);
 
-		// Add OpenStreetMap tiles (free, no API key)
 		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			attribution:
 				'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -122,7 +114,6 @@
 			minZoom: DEFAULT_MAP_CONFIG.minZoom
 		}).addTo(map);
 
-		// Handle rectangle drawing
 		map.on('mousedown', (e: any) => {
 			if (!drawingRectangle || !L || !map) return;
 			rectangleStart = e.latlng;
@@ -150,19 +141,22 @@
 				west: Math.min(rectangleStart.lng, e.latlng.lng)
 			};
 
-			// Only trigger if rectangle has some size
 			if (bounds.north !== bounds.south && bounds.east !== bounds.west) {
 				addScanRegion(bounds);
-				if (onRegionSelect) {
-					onRegionSelect(bounds);
-				}
+				onRegionSelect(bounds);
 			}
 
 			disableDrawMode();
 		});
 
 		// Initial marker update
-		updateMarkers($visibleSites);
+		const unsubscribe = visibleSites.subscribe((sites) => {
+			updateMarkers(sites);
+		});
+
+		return () => {
+			unsubscribe();
+		};
 	});
 
 	onDestroy(() => {
@@ -172,15 +166,21 @@
 		}
 	});
 
-	// React to visible sites changes
-	$: if (map && L) {
-		updateMarkers($visibleSites);
-	}
+	// Subscribe to selectedSite for flyTo
+	let selectedSiteUnsubscribe: (() => void) | null = null;
+	onMount(() => {
+		selectedSiteUnsubscribe = selectedSite.subscribe((site) => {
+			if (site && map) {
+				flyToSite(site);
+			}
+		});
+	});
 
-	// React to selected site changes
-	$: if ($selectedSite && map) {
-		flyToSite($selectedSite);
-	}
+	onDestroy(() => {
+		if (selectedSiteUnsubscribe) {
+			selectedSiteUnsubscribe();
+		}
+	});
 </script>
 
 <svelte:head>
@@ -196,6 +196,9 @@
 
 <style>
 	.map-container {
+		position: absolute;
+		top: 0;
+		left: 0;
 		width: 100%;
 		height: 100%;
 		z-index: 0;
