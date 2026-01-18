@@ -3,12 +3,13 @@
 	import type { Map as LeafletMap } from 'leaflet';
 	import { DEFAULT_MAP_CONFIG } from '$lib/types';
 	import type { Site, BoundingBox } from '$lib/types';
-	import { sitesStore } from '$lib/stores/sites.svelte';
+	import { visibleSites, selectedSite, selectSite, addScanRegion } from '$lib/stores/sites';
 
 	/** Exported props */
 	interface Props {
 		onRegionSelect?: (bounds: BoundingBox) => void;
 	}
+
 	let { onRegionSelect }: Props = $props();
 
 	let mapContainer: HTMLDivElement;
@@ -34,16 +35,16 @@
 		return L.divIcon({
 			className: 'custom-marker',
 			html: `
-				<div style="
-					background-color: ${color};
-					width: 24px;
-					height: 24px;
-					border-radius: 50%;
-					border: 3px solid white;
-					box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-					cursor: pointer;
-				"></div>
-			`,
+        <div style="
+          background-color: ${color};
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          border: 3px solid white;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          cursor: pointer;
+        "></div>
+      `,
 			iconSize: [24, 24],
 			iconAnchor: [12, 12]
 		});
@@ -74,7 +75,7 @@
 				});
 
 				marker.on('click', () => {
-					sitesStore.selectSite(site.id);
+					selectSite(site.id);
 				});
 
 				marker.addTo(map!);
@@ -160,7 +161,7 @@
 
 			// Only trigger if rectangle has some size
 			if (bounds.north !== bounds.south && bounds.east !== bounds.west) {
-				sitesStore.addScanRegion(bounds);
+				addScanRegion(bounds);
 				if (onRegionSelect) {
 					onRegionSelect(bounds);
 				}
@@ -170,7 +171,7 @@
 		});
 
 		// Initial marker update
-		updateMarkers(sitesStore.visibleSites);
+		updateMarkers($visibleSites);
 	});
 
 	onDestroy(() => {
@@ -180,15 +181,16 @@
 		}
 	});
 
-	// React to visible sites and selected site changes
+	// React to visible sites changes
 	$effect(() => {
 		if (map && L) {
-			updateMarkers(sitesStore.visibleSites);
+			updateMarkers($visibleSites);
 		}
 	});
 
+	// React to selected site changes
 	$effect(() => {
-		const selected = sitesStore.selectedSite;
+		const selected = $selectedSite;
 		if (selected && map) {
 			flyToSite(selected);
 		}
