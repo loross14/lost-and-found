@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { browser } from '$app/environment';
 	import type { Map as LeafletMap } from 'leaflet';
 	import { DEFAULT_MAP_CONFIG } from '$lib/types';
 	import type { Site, BoundingBox } from '$lib/types';
@@ -11,13 +11,14 @@
 
 	let { onRegionSelect = () => {} }: Props = $props();
 
-	let mapContainer: HTMLDivElement;
+	let mapContainer: HTMLDivElement | undefined = $state();
 	let map: LeafletMap | null = $state(null);
 	let L: typeof import('leaflet') | null = $state(null);
 	let markers: Map<string, any> = new Map();
 	let drawingRectangle = $state(false);
 	let rectangleStart: any | null = $state(null);
 	let currentRectangle: any | null = $state(null);
+	let initialized = $state(false);
 
 	const markerColors = {
 		known: '#22c55e',
@@ -99,8 +100,15 @@
 		});
 	}
 
-	onMount(async () => {
-		L = await import('leaflet');
+	let visibleSitesUnsubscribe: (() => void) | null = null;
+	let selectedSiteUnsubscribe: (() => void) | null = null;
+
+	async function initMap() {
+		if (!mapContainer || initialized) return;
+		initialized = true;
+
+		const leafletModule = await import('leaflet');
+		L = leafletModule.default ?? leafletModule;
 
 		map = L.map(mapContainer).setView(
 			[DEFAULT_MAP_CONFIG.center.lat, DEFAULT_MAP_CONFIG.center.lng],
@@ -149,48 +157,42 @@
 			disableDrawMode();
 		});
 
-		// Initial marker update
-		const unsubscribe = visibleSites.subscribe((sites) => {
+		// Subscribe to visible sites for marker updates
+		visibleSitesUnsubscribe = visibleSites.subscribe((sites) => {
 			updateMarkers(sites);
 		});
 
-		return () => {
-			unsubscribe();
-		};
-	});
-
-	onDestroy(() => {
-		if (map) {
-			map.remove();
-			map = null;
-		}
-	});
-
-	// Subscribe to selectedSite for flyTo
-	let selectedSiteUnsubscribe: (() => void) | null = null;
-	onMount(() => {
+		// Subscribe to selectedSite for flyTo
 		selectedSiteUnsubscribe = selectedSite.subscribe((site) => {
 			if (site && map) {
 				flyToSite(site);
 			}
 		});
-	});
+	}
 
-	onDestroy(() => {
-		if (selectedSiteUnsubscribe) {
-			selectedSiteUnsubscribe();
+	// Initialize when container is available and we're in browser
+	$effect(() => {
+		if (browser && mapContainer) {
+			initMap();
 		}
 	});
-</script>
 
-<svelte:head>
-	<link
-		rel="stylesheet"
-		href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-		integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-		crossorigin=""
-	/>
-</svelte:head>
+	// Cleanup
+	$effect(() => {
+		return () => {
+			if (visibleSitesUnsubscribe) {
+				visibleSitesUnsubscribe();
+			}
+			if (selectedSiteUnsubscribe) {
+				selectedSiteUnsubscribe();
+			}
+			if (map) {
+				map.remove();
+				map = null;
+			}
+		};
+	});
+</script>
 
 <div bind:this={mapContainer} class="map-container"></div>
 

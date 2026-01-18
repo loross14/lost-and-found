@@ -9,6 +9,13 @@
 	let mapComponent: Map | undefined = $state();
 	let isDrawing = $state(false);
 	let showControls = $state(true);
+	let mounted = $state(false);
+
+	$effect(() => {
+		if (browser) {
+			mounted = true;
+		}
+	});
 
 	const layerConfig = [
 		{ key: 'knownSites' as const, label: 'Known Sites', color: 'bg-site-known' },
@@ -46,7 +53,7 @@
 </svelte:head>
 
 <main class="app-container">
-	{#if browser}
+	{#if mounted}
 		<Map bind:this={mapComponent} onRegionSelect={handleRegionSelect} />
 	{/if}
 
