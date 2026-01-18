@@ -19,6 +19,9 @@
 	let rectangleStart: any | null = $state(null);
 	let currentRectangle: any | null = $state(null);
 	let initialized = $state(false);
+	let satelliteView = $state(false);
+	let streetLayer: any = null;
+	let satelliteLayer: any = null;
 
 	const markerColors = {
 		known: '#22c55e',
@@ -100,6 +103,22 @@
 		});
 	}
 
+	export function toggleSatelliteView(): void {
+		if (!map || !streetLayer || !satelliteLayer) return;
+		satelliteView = !satelliteView;
+		if (satelliteView) {
+			map.removeLayer(streetLayer);
+			satelliteLayer.addTo(map);
+		} else {
+			map.removeLayer(satelliteLayer);
+			streetLayer.addTo(map);
+		}
+	}
+
+	export function isSatelliteView(): boolean {
+		return satelliteView;
+	}
+
 	let visibleSitesUnsubscribe: (() => void) | null = null;
 	let selectedSiteUnsubscribe: (() => void) | null = null;
 
@@ -110,17 +129,37 @@
 		const leafletModule = await import('leaflet');
 		L = leafletModule.default ?? leafletModule;
 
-		map = L.map(mapContainer).setView(
+		map = L.map(mapContainer, {
+			zoomControl: false
+		}).setView(
 			[DEFAULT_MAP_CONFIG.center.lat, DEFAULT_MAP_CONFIG.center.lng],
 			DEFAULT_MAP_CONFIG.zoom
 		);
 
-		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+		// Add zoom control to bottom-right
+		L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+		// Street map layer (OpenStreetMap)
+		streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			attribution:
 				'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 			maxZoom: DEFAULT_MAP_CONFIG.maxZoom,
 			minZoom: DEFAULT_MAP_CONFIG.minZoom
-		}).addTo(map);
+		});
+
+		// Satellite layer (Esri World Imagery)
+		satelliteLayer = L.tileLayer(
+			'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+			{
+				attribution:
+					'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+				maxZoom: DEFAULT_MAP_CONFIG.maxZoom,
+				minZoom: DEFAULT_MAP_CONFIG.minZoom
+			}
+		);
+
+		// Add the default layer
+		streetLayer.addTo(map);
 
 		map.on('mousedown', (e: any) => {
 			if (!drawingRectangle || !L || !map) return;
