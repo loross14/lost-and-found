@@ -3,7 +3,7 @@
 	import Map from '$lib/components/Map.svelte';
 	import SitePanel from '$lib/components/SitePanel.svelte';
 	import RegionSelector from '$lib/components/RegionSelector.svelte';
-	import { sitesStore } from '$lib/stores/sites.svelte';
+	import { sitesStore } from '$lib/stores/sites.ts';
 	import type { BoundingBox } from '$lib/types';
 
 	let mapComponent: Map;
