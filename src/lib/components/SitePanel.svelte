@@ -2,16 +2,11 @@
 	/**
 	 * SitePanel component - displays detailed information about a selected site
 	 */
-
 	import type { Site } from '$lib/types';
-	import { sitesStore } from '$lib/stores/sites.svelte';
+	import { selectedSite, selectSite } from '$lib/stores/sites';
 
 	const statusConfig = {
-		known: {
-			label: 'Known Site',
-			color: 'bg-site-known',
-			textColor: 'text-site-known'
-		},
+		known: { label: 'Known Site', color: 'bg-site-known', textColor: 'text-site-known' },
 		potential: {
 			label: 'Potential Site',
 			color: 'bg-site-potential',
@@ -25,7 +20,7 @@
 	};
 
 	function handleClose() {
-		sitesStore.selectSite(null);
+		selectSite(null);
 	}
 
 	function formatCoordinates(lat: number, lng: number): string {
@@ -35,8 +30,8 @@
 	}
 </script>
 
-{#if sitesStore.selectedSite}
-	{@const site = sitesStore.selectedSite}
+{#if $selectedSite}
+	{@const site = $selectedSite}
 	{@const config = statusConfig[site.status]}
 
 	<div class="site-panel">
