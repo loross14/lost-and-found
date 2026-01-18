@@ -3,6 +3,7 @@
 	import Map from '$lib/components/Map.svelte';
 	import Controls from '$lib/components/Controls.svelte';
 	import SitePanel from '$lib/components/SitePanel.svelte';
+	import { loadSites, isLoading, loadError } from '$lib/stores/sites';
 	import type { BoundingBox } from '$lib/types';
 
 	let mapComponent: Map | undefined = $state();
@@ -13,6 +14,8 @@
 	$effect(() => {
 		if (browser) {
 			mounted = true;
+			// Load sites from Supabase
+			loadSites();
 		}
 	});
 

@@ -5,56 +5,14 @@
 import { writable, derived } from 'svelte/store';
 import type { Site, LayerVisibility, ScanRegion, BoundingBox } from '$lib/types';
 import { DEFAULT_LAYER_VISIBILITY } from '$lib/types';
+import { supabase } from '$lib/supabase';
 
-/** Sample data for development */
-const sampleSites: Site[] = [
-	{
-		id: '1',
-		name: 'Norton Mounds',
-		coordinates: { lat: 42.9634, lng: -85.6681 },
-		status: 'known',
-		description: 'Hopewell burial mounds complex dating to 100 BCE - 400 CE',
-		culture: 'Hopewell',
-		timePeriod: '100 BCE - 400 CE',
-		features: ['Burial mounds', 'Ceremonial artifacts']
-	},
-	{
-		id: '2',
-		name: 'Sanilac Petroglyphs',
-		coordinates: { lat: 43.5317, lng: -82.9253 },
-		status: 'known',
-		description: 'Ancient rock carvings created by Indigenous peoples',
-		culture: 'Algonquian',
-		timePeriod: '300-1000 CE',
-		features: ['Petroglyphs', 'Rock art']
-	},
-	{
-		id: '3',
-		name: 'Potential Site Alpha',
-		coordinates: { lat: 44.2, lng: -84.5 },
-		status: 'potential',
-		description: 'Anomaly detected via satellite imagery analysis',
-		features: ['Geometric patterns', 'Soil discoloration']
-	},
-	{
-		id: '4',
-		name: 'Potential Site Beta',
-		coordinates: { lat: 43.8, lng: -86.1 },
-		status: 'potential',
-		description: 'Possible earthwork formation near river confluence',
-		features: ['Linear features', 'Elevated terrain']
-	},
-	{
-		id: '5',
-		name: 'Unverified Location C',
-		coordinates: { lat: 45.1, lng: -84.8 },
-		status: 'unverified',
-		description: 'Reported anomaly requiring field verification'
-	}
-];
+/** Loading state */
+export const isLoading = writable<boolean>(false);
+export const loadError = writable<string | null>(null);
 
 /** Core writable stores */
-export const sites = writable<Site[]>(sampleSites);
+export const sites = writable<Site[]>([]);
 export const selectedSiteId = writable<string | null>(null);
 export const layerVisibility = writable<LayerVisibility>({ ...DEFAULT_LAYER_VISIBILITY });
 export const scanRegions = writable<ScanRegion[]>([]);
@@ -90,6 +48,68 @@ export const siteCounts = derived(sites, ($sites) => ({
 	total: $sites.length
 }));
 
+/** Transform database row to Site type */
+function dbRowToSite(row: any): Site {
+	return {
+		id: row.id,
+		name: row.name,
+		coordinates: { lat: row.lat, lng: row.lng },
+		status: row.status,
+		description: row.description || undefined,
+		dateDiscovered: row.date_discovered || undefined,
+		culture: row.culture || undefined,
+		timePeriod: row.time_period || undefined,
+		features: row.features || undefined,
+		imageUrl: row.image_url || undefined,
+		sourceUrl: row.source_url || undefined
+	};
+}
+
+/** Transform Site type to database row */
+function siteToDbRow(site: Omit<Site, 'id'>) {
+	return {
+		name: site.name,
+		lat: site.coordinates.lat,
+		lng: site.coordinates.lng,
+		status: site.status,
+		description: site.description || null,
+		date_discovered: site.dateDiscovered || null,
+		culture: site.culture || null,
+		time_period: site.timePeriod || null,
+		features: site.features || null,
+		image_url: site.imageUrl || null,
+		source_url: site.sourceUrl || null
+	};
+}
+
+/** Load sites from Supabase */
+export async function loadSites(): Promise<void> {
+	isLoading.set(true);
+	loadError.set(null);
+
+	console.log('Loading sites from Supabase...');
+
+	try {
+		const { data, error } = await supabase.from('sites').select('*').order('name');
+
+		console.log('Supabase response:', { data, error });
+
+		if (error) {
+			throw error;
+		}
+
+		const loadedSites = (data || []).map(dbRowToSite);
+		console.log('Loaded sites:', loadedSites);
+		sites.set(loadedSites);
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Failed to load sites';
+		loadError.set(message);
+		console.error('Error loading sites:', err);
+	} finally {
+		isLoading.set(false);
+	}
+}
+
 /** Store actions */
 export function selectSite(siteId: string | null): void {
 	selectedSiteId.set(siteId);
@@ -117,11 +137,75 @@ export function removeScanRegion(regionId: string): void {
 	scanRegions.update((current) => current.filter((r) => r.id !== regionId));
 }
 
-export function addSite(site: Omit<Site, 'id'>): Site {
-	const newSite: Site = {
-		...site,
-		id: crypto.randomUUID()
-	};
-	sites.update((current) => [...current, newSite]);
-	return newSite;
+/** Add a new site to the database */
+export async function addSite(site: Omit<Site, 'id'>): Promise<Site | null> {
+	try {
+		const { data, error } = await supabase
+			.from('sites')
+			.insert(siteToDbRow(site))
+			.select()
+			.single();
+
+		if (error) {
+			throw error;
+		}
+
+		const newSite = dbRowToSite(data);
+		sites.update((current) => [...current, newSite]);
+		return newSite;
+	} catch (err) {
+		console.error('Error adding site:', err);
+		return null;
+	}
+}
+
+/** Update an existing site in the database */
+export async function updateSite(id: string, updates: Partial<Omit<Site, 'id'>>): Promise<boolean> {
+	try {
+		const dbUpdates: any = {};
+		if (updates.name !== undefined) dbUpdates.name = updates.name;
+		if (updates.coordinates !== undefined) {
+			dbUpdates.lat = updates.coordinates.lat;
+			dbUpdates.lng = updates.coordinates.lng;
+		}
+		if (updates.status !== undefined) dbUpdates.status = updates.status;
+		if (updates.description !== undefined) dbUpdates.description = updates.description;
+		if (updates.culture !== undefined) dbUpdates.culture = updates.culture;
+		if (updates.timePeriod !== undefined) dbUpdates.time_period = updates.timePeriod;
+		if (updates.features !== undefined) dbUpdates.features = updates.features;
+		if (updates.imageUrl !== undefined) dbUpdates.image_url = updates.imageUrl;
+		if (updates.sourceUrl !== undefined) dbUpdates.source_url = updates.sourceUrl;
+
+		const { error } = await supabase.from('sites').update(dbUpdates).eq('id', id);
+
+		if (error) {
+			throw error;
+		}
+
+		// Update local store
+		sites.update((current) =>
+			current.map((s) => (s.id === id ? { ...s, ...updates } : s))
+		);
+		return true;
+	} catch (err) {
+		console.error('Error updating site:', err);
+		return false;
+	}
+}
+
+/** Delete a site from the database */
+export async function deleteSite(id: string): Promise<boolean> {
+	try {
+		const { error } = await supabase.from('sites').delete().eq('id', id);
+
+		if (error) {
+			throw error;
+		}
+
+		sites.update((current) => current.filter((s) => s.id !== id));
+		return true;
+	} catch (err) {
+		console.error('Error deleting site:', err);
+		return false;
+	}
 }
