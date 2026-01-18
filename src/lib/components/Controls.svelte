@@ -5,14 +5,20 @@
 
 	interface Props {
 		onDrawStart?: () => void;
+		onPresetSelect?: (bbox: BoundingBox, center: { lat: number; lng: number }, zoom: number) => void;
+		onAnalyze?: (bbox: BoundingBox) => void;
 		isDrawing?: boolean;
+		pendingRegion?: BoundingBox | null;
 		satelliteView?: boolean;
 		onToggleSatellite?: () => void;
 	}
 
 	let {
 		onDrawStart = () => {},
+		onPresetSelect = () => {},
+		onAnalyze = () => {},
 		isDrawing = false,
+		pendingRegion = null,
 		satelliteView = false,
 		onToggleSatellite = () => {}
 	}: Props = $props();
@@ -67,6 +73,29 @@
 		</header>
 
 		{#if showControls}
+			<nav class="panel-section nav-section">
+				<a href="/discoveries" class="nav-link">
+					<svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
+						<path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+						<path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+					</svg>
+					<span class="nav-label">Review Discoveries</span>
+					<svg xmlns="http://www.w3.org/2000/svg" class="nav-arrow" viewBox="0 0 20 20" fill="currentColor">
+						<path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+					</svg>
+				</a>
+				<a href="/scanner" class="nav-link">
+					<svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
+						<path fill-rule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 3a1 1 0 00-1 1v3a1 1 0 001 1h3a1 1 0 001-1V4a1 1 0 00-1-1h-3zm1 2v1h1V5h-1z" clip-rule="evenodd" />
+						<path d="M11 4a1 1 0 10-2 0v1a1 1 0 002 0V4zM10 7a1 1 0 011 1v1h2a1 1 0 110 2h-3a1 1 0 01-1-1V8a1 1 0 011-1zM16 9a1 1 0 100 2 1 1 0 000-2zM9 13a1 1 0 011-1h1a1 1 0 110 2v2a1 1 0 11-2 0v-3zM16 13a1 1 0 100 2v2a1 1 0 102 0v-2a1 1 0 00-2 0zM13 13a1 1 0 100 2h4a1 1 0 100-2h-4z" />
+					</svg>
+					<span class="nav-label">Scanner Dashboard</span>
+					<svg xmlns="http://www.w3.org/2000/svg" class="nav-arrow" viewBox="0 0 20 20" fill="currentColor">
+						<path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+					</svg>
+				</a>
+			</nav>
+
 			<section class="panel-section">
 				<h2 class="section-title">Map View</h2>
 				<label class="layer-toggle">
@@ -101,7 +130,13 @@
 			</section>
 
 			<section class="panel-section">
-				<RegionSelector {onDrawStart} {isDrawing} />
+				<RegionSelector
+					{onDrawStart}
+					{onPresetSelect}
+					{onAnalyze}
+					{isDrawing}
+					{pendingRegion}
+				/>
 			</section>
 
 			<section class="panel-section stats-section">
@@ -288,5 +323,58 @@
 		color: #6b7280;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+	}
+
+	.nav-section {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.nav-link {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 10px 12px;
+		background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+		border-radius: 8px;
+		text-decoration: none;
+		color: #374151;
+		transition: all 0.2s;
+		border: 1px solid #e5e7eb;
+	}
+
+	.nav-link:hover {
+		background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+		border-color: #93c5fd;
+		color: #1d4ed8;
+	}
+
+	.nav-icon {
+		width: 18px;
+		height: 18px;
+		color: #6b7280;
+		flex-shrink: 0;
+	}
+
+	.nav-link:hover .nav-icon {
+		color: #3b82f6;
+	}
+
+	.nav-label {
+		flex: 1;
+		font-size: 14px;
+		font-weight: 500;
+	}
+
+	.nav-arrow {
+		width: 16px;
+		height: 16px;
+		color: #9ca3af;
+		flex-shrink: 0;
+	}
+
+	.nav-link:hover .nav-arrow {
+		color: #3b82f6;
 	}
 </style>

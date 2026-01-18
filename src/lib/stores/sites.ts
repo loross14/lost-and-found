@@ -87,19 +87,14 @@ export async function loadSites(): Promise<void> {
 	isLoading.set(true);
 	loadError.set(null);
 
-	console.log('Loading sites from Supabase...');
-
 	try {
 		const { data, error } = await supabase.from('sites').select('*').order('name');
-
-		console.log('Supabase response:', { data, error });
 
 		if (error) {
 			throw error;
 		}
 
 		const loadedSites = (data || []).map(dbRowToSite);
-		console.log('Loaded sites:', loadedSites);
 		sites.set(loadedSites);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Failed to load sites';

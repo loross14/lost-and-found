@@ -30,7 +30,7 @@
 	};
 
 	function createMarkerIcon(status: Site['status']) {
-		if (!L) return null;
+		if (!L) return undefined;
 		const color = markerColors[status];
 		return L.divIcon({
 			className: 'custom-marker',
@@ -83,6 +83,9 @@
 		if (!map) return;
 		drawingRectangle = true;
 		map.getContainer().style.cursor = 'crosshair';
+		// Disable map interactions while drawing
+		map.dragging.disable();
+		map.doubleClickZoom.disable();
 	}
 
 	export function disableDrawMode(): void {
@@ -94,6 +97,9 @@
 			currentRectangle.remove();
 			currentRectangle = null;
 		}
+		// Re-enable map interactions
+		map.dragging.enable();
+		map.doubleClickZoom.enable();
 	}
 
 	export function flyToSite(site: Site): void {
@@ -101,6 +107,40 @@
 		map.flyTo([site.coordinates.lat, site.coordinates.lng], 12, {
 			duration: 1
 		});
+	}
+
+	export function flyTo(lat: number, lng: number, zoom: number): void {
+		if (!map) return;
+		map.flyTo([lat, lng], zoom, {
+			duration: 1.5
+		});
+	}
+
+	export function drawRectangle(bbox: BoundingBox): void {
+		if (!map || !L) return;
+		// Remove existing rectangle if any
+		if (currentRectangle) {
+			currentRectangle.remove();
+		}
+		// Draw the rectangle
+		currentRectangle = L.rectangle(
+			[
+				[bbox.south, bbox.west],
+				[bbox.north, bbox.east]
+			],
+			{
+				color: '#3b82f6',
+				weight: 2,
+				fillOpacity: 0.2
+			}
+		).addTo(map);
+	}
+
+	export function clearRectangle(): void {
+		if (currentRectangle) {
+			currentRectangle.remove();
+			currentRectangle = null;
+		}
 	}
 
 	export function toggleSatelliteView(): void {
