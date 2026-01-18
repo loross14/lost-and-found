@@ -3,21 +3,21 @@
 	 * RegionSelector component - allows users to draw rectangles to select scan regions
 	 */
 
-	import { sitesStore } from '$lib/stores/sites.svelte';
+	import { removeScanRegion } from '$lib/stores/sites';
 	import type { ScanRegion } from '$lib/types';
 
 	interface Props {
 		onDrawStart?: () => void;
 		isDrawing?: boolean;
 	}
-	let { onDrawStart = () => {}, isDrawing = false }: Props = $props();
+	export let onDrawStart = () => {}; export let isDrawing = false;
 
 	function handleStartDraw() {
 		onDrawStart();
 	}
 
 	function handleRemoveRegion(regionId: string) {
-		sitesStore.removeScanRegion(regionId);
+		removeScanRegion(regionId);
 	}
 
 	function formatBounds(region: ScanRegion): string {

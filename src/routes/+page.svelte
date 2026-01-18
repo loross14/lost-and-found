@@ -3,12 +3,12 @@
 	import Map from '$lib/components/Map.svelte';
 	import SitePanel from '$lib/components/SitePanel.svelte';
 	import RegionSelector from '$lib/components/RegionSelector.svelte';
-	import { sitesStore } from '$lib/stores/sites.ts';
+	import { toggleLayer } from '$lib/stores/sites';
 	import type { BoundingBox } from '$lib/types';
 
 	let mapComponent: Map;
-	let isDrawing = $state(false);
-	let showControls = $state(true);
+	let isDrawing = false;
+	let showControls = true;
 
 	const layerConfig = [
 		{ key: 'knownSites' as const, label: 'Known Sites', color: 'bg-site-known' },
@@ -28,7 +28,7 @@
 	}
 
 	function handleToggleLayer(layerKey: 'knownSites' | 'potentialSites' | 'unverifiedSites') {
-		sitesStore.toggleLayer(layerKey);
+		toggleLayer(layerKey);
 	}
 
 	function getLayerCount(key: string): number {
