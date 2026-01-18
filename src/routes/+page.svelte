@@ -3,7 +3,7 @@
 	import Map from '$lib/components/Map.svelte';
 	import SitePanel from '$lib/components/SitePanel.svelte';
 	import RegionSelector from '$lib/components/RegionSelector.svelte';
-	import { toggleLayer } from '$lib/stores/sites';
+	import { toggleLayer, layerVisibility, siteCounts } from '$lib/stores/sites';
 	import type { BoundingBox } from '$lib/types';
 
 	let mapComponent: Map;
@@ -32,10 +32,9 @@
 	}
 
 	function getLayerCount(key: string): number {
-		const counts = sitesStore.siteCounts;
-		if (key === 'knownSites') return counts.known;
-		if (key === 'potentialSites') return counts.potential;
-		return counts.unverified;
+		if (key === 'knownSites') return $siteCounts.known;
+		if (key === 'potentialSites') return $siteCounts.potential;
+		return $siteCounts.unverified;
 	}
 </script>
 
@@ -69,8 +68,7 @@
 			</div>
 			<p class="subtitle">Archaeological Site Detection</p>
 		</div>
-
-		<button class="toggle-controls-btn" onclick={() => (showControls = !showControls)}>
+		<button class="toggle-controls-btn" on:click={() => (showControls = !showControls)}>
 			{showControls ? 'Hide Controls' : 'Show Controls'}
 		</button>
 	</header>
@@ -86,8 +84,8 @@
 						<label class="layer-toggle">
 							<input
 								type="checkbox"
-								checked={sitesStore.layerVisibility[layer.key]}
-								onchange={() => handleToggleLayer(layer.key)}
+								checked={$layerVisibility[layer.key]}
+								on:change={() => handleToggleLayer(layer.key)}
 							/>
 							<span class="toggle-indicator {layer.color}"></span>
 							<span class="toggle-label">{layer.label}</span>
@@ -107,11 +105,11 @@
 			<!-- Stats -->
 			<section class="panel-section stats-section">
 				<div class="stat">
-					<span class="stat-value">{sitesStore.siteCounts.total}</span>
+					<span class="stat-value">{$siteCounts.total}</span>
 					<span class="stat-label">Total Sites</span>
 				</div>
 				<div class="stat">
-					<span class="stat-value">{sitesStore.siteCounts.known}</span>
+					<span class="stat-value">{$siteCounts.known}</span>
 					<span class="stat-label">Verified</span>
 				</div>
 			</section>

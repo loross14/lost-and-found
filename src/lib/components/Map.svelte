@@ -6,19 +6,15 @@
 	import { visibleSites, selectedSite, selectSite, addScanRegion } from '$lib/stores/sites';
 
 	/** Exported props */
-	interface Props {
-		onRegionSelect?: (bounds: BoundingBox) => void;
-	}
-
-	let { onRegionSelect }: Props = $props();
+	export let onRegionSelect: (bounds: BoundingBox) => void = () => {};
 
 	let mapContainer: HTMLDivElement;
-	let map: LeafletMap | null = $state(null);
-	let L: typeof import('leaflet') | null = $state(null);
+	let map: LeafletMap | null = null;
+	let L: typeof import('leaflet') | null = null;
 	let markers: Map<string, any> = new Map();
-	let drawingRectangle = $state(false);
-	let rectangleStart: any | null = $state(null);
-	let currentRectangle: any | null = $state(null);
+	let drawingRectangle = false;
+	let rectangleStart: any | null = null;
+	let currentRectangle: any | null = null;
 
 	/** Marker colors by site status */
 	const markerColors = {
@@ -30,21 +26,20 @@
 	/** Create a custom icon for a site */
 	function createMarkerIcon(status: Site['status']) {
 		if (!L) return null;
-
 		const color = markerColors[status];
 		return L.divIcon({
 			className: 'custom-marker',
 			html: `
-        <div style="
-          background-color: ${color};
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          border: 3px solid white;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-          cursor: pointer;
-        "></div>
-      `,
+				<div style="
+					background-color: ${color};
+					width: 24px;
+					height: 24px;
+					border-radius: 50%;
+					border: 3px solid white;
+					box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+					cursor: pointer;
+				"></div>
+			`,
 			iconSize: [24, 24],
 			iconAnchor: [12, 12]
 		});
@@ -73,11 +68,9 @@
 				const marker = L!.marker([site.coordinates.lat, site.coordinates.lng], {
 					icon: createMarkerIcon(site.status)
 				});
-
 				marker.on('click', () => {
 					selectSite(site.id);
 				});
-
 				marker.addTo(map!);
 				markers.set(site.id, marker);
 			}
@@ -137,11 +130,9 @@
 
 		map.on('mousemove', (e: any) => {
 			if (!drawingRectangle || !rectangleStart || !L || !map) return;
-
 			if (currentRectangle) {
 				currentRectangle.remove();
 			}
-
 			currentRectangle = L.rectangle([rectangleStart, e.latlng], {
 				color: '#3b82f6',
 				weight: 2,
@@ -182,19 +173,14 @@
 	});
 
 	// React to visible sites changes
-	$effect(() => {
-		if (map && L) {
-			updateMarkers($visibleSites);
-		}
-	});
+	$: if (map && L) {
+		updateMarkers($visibleSites);
+	}
 
 	// React to selected site changes
-	$effect(() => {
-		const selected = $selectedSite;
-		if (selected && map) {
-			flyToSite(selected);
-		}
-	});
+	$: if ($selectedSite && map) {
+		flyToSite($selectedSite);
+	}
 </script>
 
 <svelte:head>

@@ -2,15 +2,11 @@
 	/**
 	 * RegionSelector component - allows users to draw rectangles to select scan regions
 	 */
-
-	import { removeScanRegion } from '$lib/stores/sites';
+	import { removeScanRegion, scanRegions } from '$lib/stores/sites';
 	import type { ScanRegion } from '$lib/types';
 
-	interface Props {
-		onDrawStart?: () => void;
-		isDrawing?: boolean;
-	}
-	export let onDrawStart = () => {}; export let isDrawing = false;
+	export let onDrawStart: () => void = () => {};
+	export let isDrawing: boolean = false;
 
 	function handleStartDraw() {
 		onDrawStart();
@@ -59,7 +55,12 @@
 <div class="region-selector">
 	<div class="selector-header">
 		<h3 class="selector-title">Scan Regions</h3>
-		<button class="draw-btn" class:drawing={isDrawing} onclick={handleStartDraw} disabled={isDrawing}>
+		<button
+			class="draw-btn"
+			class:drawing={isDrawing}
+			on:click={handleStartDraw}
+			disabled={isDrawing}
+		>
 			{#if isDrawing}
 				<span class="drawing-indicator"></span>
 				Drawing...
@@ -87,7 +88,7 @@
 		{/if}
 	</p>
 
-	{#if sitesStore.scanRegions.length === 0}
+	{#if $scanRegions.length === 0}
 		<div class="empty-state">
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -107,7 +108,7 @@
 		</div>
 	{:else}
 		<div class="regions-list">
-			{#each sitesStore.scanRegions as region (region.id)}
+			{#each $scanRegions as region (region.id)}
 				<div class="region-item">
 					<div class="region-info">
 						<div class="region-status {getStatusColor(region.status)}">
@@ -124,7 +125,7 @@
 					</div>
 					<button
 						class="remove-btn"
-						onclick={() => handleRemoveRegion(region.id)}
+						on:click={() => handleRemoveRegion(region.id)}
 						aria-label="Remove region"
 					>
 						<svg
